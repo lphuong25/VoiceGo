@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceGo | Japanese Audio Analyzer</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<main class="page">
+    <header class="hero">
+        <p class="eyebrow">JAPANESE LEARNING TOOL</p>
+        <h1>VoiceGo</h1>
+        <p>Turn Japanese audio into a transcript, English translation, and JLPT-level vocabulary.</p>
+    </header>
+
+    <section id="auth-section" class="card">
+        <h2>Get started</h2>
+        <p class="muted">Create an account or sign in to analyze audio.</p>
+        <div class="form-grid">
+            <input id="username" type="email" placeholder="Email" autocomplete="email">
+            <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+        </div>
+        <div class="button-row">
+            <button id="signup-btn">Sign Up</button>
+            <button id="login-btn" class="secondary">Login</button>
+        </div>
+        <p id="auth-msg" class="status"></p>
+    </section>
+
+    <section id="app-section" class="hidden">
+        <div class="topbar">
+            <div>Signed in as <strong id="current-user"></strong></div>
+            <div class="button-row">
+                <a href="/flashcard" class="button secondary">Flashcards</a>
+                <button id="logout-btn" class="secondary">Logout</button>
+            </div>
+        </div>
+
+        <section class="card">
+            <h2>Analyze Japanese audio</h2>
+            <p class="muted">Supported: MP3, WAV, M4A, OGG, WEBM · Maximum 25 MB</p>
+            <form id="upload-form">
+                <input id="audio-file" type="file" name="file"
+                       accept=".mp3,.wav,.m4a,.ogg,.webm,audio/*" required>
+                <button id="analyze-btn" type="submit">Analyze Audio</button>
+            </form>
+            <p id="upload-status" class="status"></p>
+        </section>
+
+        <section id="result" class="card hidden">
+            <div class="result-section">
+                <h3>Japanese transcription</h3>
+                <p id="transcription" class="result-text"></p>
+            </div>
+
+            <div class="result-section">
+                <h3>English translation</h3>
+                <p id="translation" class="result-text"></p>
+            </div>
+
+            <div class="result-section">
+                <div class="section-heading">
+                    <h3>JLPT vocabulary</h3>
+                    <button id="save-btn" class="secondary">Save Result</button>
+                </div>
+                <div id="vocabulary-list"></div>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script>
+const SUPABASE_URL = "{{ SUPABASE_URL }}";
+const SUPABASE_ANON_KEY = "{{ SUPABASE_ANON_KEY }}";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentResult = null;
+
+const authSection = document.getElementById("auth-section");
+const appSection = document.getElementById("app-section");
+const authMsg = document.getElementById("auth-msg");
+const uploadStatus = document.getElementById("upload-status");
+const resultSection = document.getElementById("result");
+
+function showApp(user) {
+    authSection.classList.add("hidden");
+    appSection.classList.remove("hidden");
+    document.getElementById("current-user").textContent = user.email;
+}
+
+function showAuth() {
+    authSection.classList.remove("hidden");
+    appSection.classList.add("hidden");
+}
+
+async function restoreSession() {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) showApp(data.session.user);
+}
+
+document.getElementById("signup-btn").addEventListener("click", async () => {
+    const email = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    authMsg.textContent = error
+        ? error.message
+        : "Account created. Check your email if confirmation is enabled.";
+});
+
+document.getElementById("login-btn").addEventListener("click", async () => {
+    const email = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email, password
+    });
+
+    if (error) {
+        authMsg.textContent = error.message;
+        return;
+    }
+
+    authMsg.textContent = "";
+    showApp(data.user);
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    showAuth();
+    resultSection.classList.add("hidden");
+});
+
+document.getElementById("upload-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const file = document.getElementById("audio-file").files[0];
+    if (!file) return;
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const token = sessionData.session?.access_token;
+
+    if (!token) {
+        uploadStatus.textContent = "Your session expired. Please log in again.";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const analyzeButton = document.getElementById("analyze-btn");
+    analyzeButton.disabled = true;
+    uploadStatus.textContent = "Analyzing audio... Whisper may take a moment.";
+    resultSection.classList.add("hidden");
+
+    try {
+        const response = await fetch("/uploads", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` },
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Analysis failed.");
+
+        currentResult = data;
+        document.getElementById("transcription").textContent = data.transcription;
+        document.getElementById("translation").textContent = data.translation;
+
+        const vocabContainer = document.getElementById("vocabulary-list");
+        vocabContainer.innerHTML = "";
+
+        let total = 0;
+        for (const [level, words] of Object.entries(data.vocabulary_list)) {
+            if (!words.length) continue;
+            total += words.length;
+
+            const group = document.createElement("div");
+            group.className = "vocab-group";
+
+            const title = document.createElement("h4");
+            title.textContent = `${level} (${words.length})`;
+            group.appendChild(title);
+
+            words.forEach(word => {
+                const item = document.createElement("div");
+                item.className = "vocab-item";
+                item.textContent =
+                    `${word.Word} (${word.Pronunciation}) — ${word.Meaning}`;
+                group.appendChild(item);
+            });
+
+            vocabContainer.appendChild(group);
+        }
+
+        if (!total) {
+            vocabContainer.innerHTML =
+                '<p class="muted">No matching JLPT vocabulary was found.</p>';
+        }
+
+        localStorage.setItem("vocabulary_list",
+            JSON.stringify(data.vocabulary_list));
+
+        resultSection.classList.remove("hidden");
+        uploadStatus.textContent = "Analysis complete.";
+    } catch (error) {
+        uploadStatus.textContent = error.message;
+    } finally {
+        analyzeButton.disabled = false;
+    }
+});
+
+document.getElementById("save-btn").addEventListener("click", async () => {
+    if (!currentResult) return;
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const session = sessionData.session;
+
+    if (!session) {
+        uploadStatus.textContent = "Please log in again.";
+        return;
+    }
+
+    const response = await fetch("/save_user_data", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+            user_id: session.user.id,
+            transcription: currentResult.transcription,
+            translation: currentResult.translation,
+            vocabulary_list: currentResult.vocabulary_list
+        })
+    });
+
+    const data = await response.json();
+    uploadStatus.textContent = response.ok
+        ? "Result saved to your account."
+        : (data.detail || "Could not save result.");
+});
+
+restoreSession();
+</script>
+</body>
+</html>

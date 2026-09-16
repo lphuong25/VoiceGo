@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceGo | Flashcards</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="page narrow">
+    <header class="hero">
+        <p class="eyebrow">VOICEGO</p>
+        <h1>JLPT Flashcards</h1>
+        <p>Review vocabulary from your latest audio analysis.</p>
+        <a href="/" class="button secondary">← Back to analyzer</a>
+    </header>
+
+    <section id="empty-state" class="card">
+        <p>No vocabulary data found. Analyze an audio file first.</p>
+    </section>
+
+    <section id="flashcard-controls" class="card hidden">
+        <div class="controls">
+            <label for="jlpt-filter">JLPT level</label>
+            <select id="jlpt-filter">
+                <option value="all">All</option>
+                <option value="N5">N5</option>
+                <option value="N4">N4</option>
+                <option value="N3">N3</option>
+                <option value="N2">N2</option>
+                <option value="N1">N1</option>
+            </select>
+        </div>
+
+        <div id="flashcard" class="flashcard" title="Click to flip">
+            Loading...
+        </div>
+
+        <p id="card-count" class="muted center"></p>
+
+        <div class="button-row center">
+            <button id="flashcard-prev" class="secondary">Previous</button>
+            <button id="flashcard-next">Next</button>
+        </div>
+        <p class="muted center">Click the card to flip it.</p>
+    </section>
+</main>
+
+<script>
+let allFlashcards = [];
+let levelFlashcards = [];
+let currentIndex = 0;
+let showFront = true;
+
+const emptyState = document.getElementById("empty-state");
+const controls = document.getElementById("flashcard-controls");
+const card = document.getElementById("flashcard");
+const count = document.getElementById("card-count");
+
+function createFlashcards() {
+    const stored = localStorage.getItem("vocabulary_list");
+    if (!stored) return;
+
+    const vocabData = JSON.parse(stored);
+    allFlashcards = [];
+
+    for (const [level, words] of Object.entries(vocabData)) {
+        words.forEach(word => {
+            allFlashcards.push({
+                level,
+                front: `${word.Word} (${word.Pronunciation})`,
+                back: word.Meaning
+            });
+        });
+    }
+
+    if (!allFlashcards.length) return;
+
+    emptyState.classList.add("hidden");
+    controls.classList.remove("hidden");
+    levelFlashcards = [...allFlashcards];
+    currentIndex = 0;
+    showFront = true;
+    showCard();
+}
+
+function showCard() {
+    if (!levelFlashcards.length) {
+        card.textContent = "No cards for this level.";
+        count.textContent = "";
+        return;
+    }
+
+    const current = levelFlashcards[currentIndex];
+    card.textContent = showFront ? current.front : current.back;
+    count.textContent = `${currentIndex + 1} / ${levelFlashcards.length} · ${current.level}`;
+}
+
+card.addEventListener("click", () => {
+    if (!levelFlashcards.length) return;
+    showFront = !showFront;
+    showCard();
+});
+
+document.getElementById("flashcard-next").addEventListener("click", () => {
+    if (!levelFlashcards.length) return;
+    currentIndex = (currentIndex + 1) % levelFlashcards.length;
+    showFront = true;
+    showCard();
+});
+
+document.getElementById("flashcard-prev").addEventListener("click", () => {
+    if (!levelFlashcards.length) return;
+    currentIndex =
+        (currentIndex - 1 + levelFlashcards.length) % levelFlashcards.length;
+    showFront = true;
+    showCard();
+});
+
+document.getElementById("jlpt-filter").addEventListener("change", event => {
+    const level = event.target.value;
+    levelFlashcards = level === "all"
+        ? [...allFlashcards]
+        : allFlashcards.filter(item => item.level === level);
+
+    currentIndex = 0;
+    showFront = true;
+    showCard();
+});
+
+createFlashcards();
+</script>
+</body>
+</html>

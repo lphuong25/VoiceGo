@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-multipart
+jinja2
+python-dotenv
+groq
+deepl
+fugashi[unidic-lite]
