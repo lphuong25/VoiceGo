@@ -1,8 +1,10 @@
+"""VoiceGo FastAPI application."""
+
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional
 
-import requests
+import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
@@ -10,150 +12,161 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+load_dotenv()
+
 from transcription import transcribe_audio
 from translation import translate
 from vocabulary import tokenize_word, vocabulary_extraction
 from userdata import save_user_data, get_user_data
 
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-MAX_AUDIO_SIZE = 25 * 1024 * 1024  # Groq free-tier upload limit
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+MAX_FILE_SIZE = 25 * 1024 * 1024
+ALLOWED_EXTENSIONS = {".mp3", ".wav", ".m4a", ".webm", ".mp4", ".mpeg", ".mpga"}
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("SUPABASE_API_KEY", ""))
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "").strip()
 
 app = FastAPI(title="VoiceGo", version="1.0.0")
-
-app.mount(
-    "/static",
-    StaticFiles(directory=BASE_DIR / "static"),
-    name="static",
-)
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-def verify_token(authorization: str = Header(...)) -> dict:
-    """Verify a Supabase access token and return the user's UUID."""
-    try:
-        scheme, token = authorization.split(maxsplit=1)
-        if scheme.lower() != "bearer":
-            raise ValueError("Invalid authentication scheme")
-
-        response = requests.get(
-            f"{SUPABASE_URL}/auth/v1/user",
-            headers={
-                "apikey": SUPABASE_ANON_KEY,
-                "Authorization": f"Bearer {token}",
-            },
-            timeout=10,
-        )
-        if response.status_code != 200:
-            raise ValueError("Supabase rejected the access token")
-
-        user = response.json()
-        return {"user_id": user["id"], "token": token}
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/")
 def home(request: Request):
     return templates.TemplateResponse(
-        "index.html",
-        {
+        request=request,
+        name="index.html",
+        context={
             "request": request,
             "SUPABASE_URL": SUPABASE_URL,
             "SUPABASE_ANON_KEY": SUPABASE_ANON_KEY,
+            "supabase_configured": bool(SUPABASE_URL and SUPABASE_ANON_KEY),
         },
     )
 
 
-@app.get("/health")
-def health():
-    """Simple health check for Render and local deployment."""
-    return {"status": "ok"}
-
-
 @app.post("/uploads")
-async def upload_audio(
-    file: UploadFile = File(...),
-    auth: dict = Depends(verify_token),
-):
-    del auth  # Authentication is required; results are not persisted here.
+async def upload_audio(file: UploadFile = File(...)):
+    """Process audio in guest mode; no account is required."""
 
-    allowed_types = {
-        "audio/mpeg",
-        "audio/mp3",
-        "audio/wav",
-        "audio/x-wav",
-        "audio/mp4",
-        "audio/x-m4a",
-        "audio/ogg",
-        "audio/webm",
-    }
+    extension = Path(file.filename or "").suffix.lower()
 
-    if file.content_type not in allowed_types:
+    if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported audio format. Use MP3, WAV, M4A, OGG, or WEBM.",
+            detail=(
+                "Unsupported audio format. "
+                "Use MP3, WAV, M4A, WEBM, or another supported format."
+            ),
         )
 
-    audio_bytes = await file.read()
+    file_bytes = await file.read()
 
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
-
-    if len(audio_bytes) > MAX_AUDIO_SIZE:
+    if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
-            detail="Audio file is too large. Please keep it under 25 MB.",
+            detail="Audio file must be 25 MB or smaller."
+        )
+
+    if not file_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded audio file is empty."
         )
 
     try:
         transcription = transcribe_audio(
-            audio_bytes,
-            file.filename or "audio.mp3",
-            language="ja",
+            file_bytes,
+            file.filename or "audio.mp3"
         )
+
         translation = translate(transcription)
+
         tokenized_words = tokenize_word(transcription)
-        vocabulary_list = vocabulary_extraction(tokenized_words)
+
+        print("Tokenized words:", tokenized_words)
+
+        vocabulary_list = vocabulary_extraction(
+            tokenized_words
+        )
+
+        print("Vocabulary:", vocabulary_list)
 
         return {
             "filename": file.filename,
             "transcription": transcription,
             "translation": translation,
             "vocabulary_list": vocabulary_list,
+            "word_count": sum(
+                len(words)
+                for words in vocabulary_list.values()
+            ),
         }
-    except Exception as exc:
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+
         raise HTTPException(
-            status_code=502,
-            detail=f"Audio processing failed: {exc}",
-        ) from exc
+            status_code=500,
+            detail=f"Analysis failed: {str(e)}"
+        )
 
 
 @app.get("/flashcard")
 def flashcard(request: Request):
     return templates.TemplateResponse(
-        "flashcard.html",
-        {"request": request},
+        request=request,
+        name="flashcard.html",
+        context={"request": request},
     )
 
 
+# ----------------------------
+# Optional account-backed history
+# ----------------------------
 class UserDataModel(BaseModel):
     user_id: str
     transcription: str
     translation: str
-    vocabulary_list: dict[str, list[dict[str, Any]]]
+    vocabulary_list: Dict[str, List[Dict[str, Any]]]
+
+
+def optional_user_id(authorization: Optional[str] = Header(default=None)):
+    """Return the Supabase user ID when a valid bearer token is supplied."""
+    if not authorization or not SUPABASE_JWT_SECRET:
+        return None
+
+    try:
+        scheme, token = authorization.split(maxsplit=1)
+        if scheme.lower() != "bearer":
+            return None
+        decoded = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"])
+        return decoded.get("sub")
+    except Exception:
+        return None
 
 
 @app.post("/save_user_data")
 async def save_user_data_endpoint(
     user_data: UserDataModel,
-    auth: dict = Depends(verify_token),
+    token_user_id: Optional[str] = Depends(optional_user_id),
 ):
-    if auth["user_id"] != user_data.user_id:
+    if not token_user_id:
+        return {"saved": False, "message": "Sign in to save your learning history."}
+
+    if token_user_id != user_data.user_id:
         raise HTTPException(status_code=403, detail="Unauthorized user")
 
     try:
@@ -162,29 +175,29 @@ async def save_user_data_endpoint(
             user_data.transcription,
             user_data.translation,
             user_data.vocabulary_list,
-            access_token=auth["token"],
         )
-        return {"message": "User data saved successfully"}
+        return {"saved": True, "message": "Learning session saved."}
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to save user data: {exc}",
-        ) from exc
+        return JSONResponse(
+            status_code=500,
+            content={"saved": False, "error": f"Failed to save user data: {str(exc)}"},
+        )
 
 
 @app.get("/get_user_data/{user_id}")
 async def get_user_data_endpoint(
     user_id: str,
-    auth: dict = Depends(verify_token),
+    token_user_id: Optional[str] = Depends(optional_user_id),
 ):
-    if user_id != auth["user_id"]:
+    if not token_user_id:
+        raise HTTPException(status_code=401, detail="Sign in to view saved history.")
+    if user_id != token_user_id:
         raise HTTPException(status_code=403, detail="Unauthorized user")
 
     try:
-        user_data = await get_user_data(user_id, access_token=auth["token"])
-        return {"user_data": user_data}
+        return {"user_data": await get_user_data(user_id)}
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to get user data: {exc}",
-        ) from exc
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to get user data: {str(exc)}"},
+        )

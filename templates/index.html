@@ -15,9 +15,9 @@
         <p>Turn Japanese audio into a transcript, English translation, and JLPT-level vocabulary.</p>
     </header>
 
-    <section id="auth-section" class="card">
+    <section id="auth-section" class="card hidden">
         <h2>Get started</h2>
-        <p class="muted">Create an account or sign in to analyze audio.</p>
+        <p class="muted">Optional: sign in to save your learning history.</p>
         <div class="form-grid">
             <input id="username" type="email" placeholder="Email" autocomplete="email">
             <input id="password" type="password" placeholder="Password" autocomplete="current-password">
@@ -29,12 +29,13 @@
         <p id="auth-msg" class="status"></p>
     </section>
 
-    <section id="app-section" class="hidden">
+    <section id="app-section">
         <div class="topbar">
-            <div>Signed in as <strong id="current-user"></strong></div>
+            <div id="account-status">Guest mode</div>
             <div class="button-row">
                 <a href="/flashcard" class="button secondary">Flashcards</a>
-                <button id="logout-btn" class="secondary">Logout</button>
+                <button id="login-toggle-btn" class="secondary">Log in</button>
+                <button id="logout-btn" class="secondary hidden">Logout</button>
             </div>
         </div>
 
@@ -80,6 +81,9 @@ let currentResult = null;
 
 const authSection = document.getElementById("auth-section");
 const appSection = document.getElementById("app-section");
+const accountStatus = document.getElementById("account-status");
+const loginToggleButton = document.getElementById("login-toggle-btn");
+const logoutButton = document.getElementById("logout-btn");
 const authMsg = document.getElementById("auth-msg");
 const uploadStatus = document.getElementById("upload-status");
 const resultSection = document.getElementById("result");
@@ -87,13 +91,23 @@ const resultSection = document.getElementById("result");
 function showApp(user) {
     authSection.classList.add("hidden");
     appSection.classList.remove("hidden");
-    document.getElementById("current-user").textContent = user.email;
+    accountStatus.textContent = `Signed in as ${user.email}`;
+    loginToggleButton.classList.add("hidden");
+    logoutButton.classList.remove("hidden");
 }
 
 function showAuth() {
-    authSection.classList.remove("hidden");
-    appSection.classList.add("hidden");
+    authSection.classList.add("hidden");
+    appSection.classList.remove("hidden");
+    accountStatus.textContent = "Guest mode";
+    loginToggleButton.classList.remove("hidden");
+    logoutButton.classList.add("hidden");
 }
+
+loginToggleButton.addEventListener("click", () => {
+    authSection.classList.toggle("hidden");
+    authMsg.textContent = "";
+});
 
 async function restoreSession() {
     const { data } = await supabaseClient.auth.getSession();
@@ -142,11 +156,6 @@ document.getElementById("upload-form").addEventListener("submit", async (event) 
     const { data: sessionData } = await supabaseClient.auth.getSession();
     const token = sessionData.session?.access_token;
 
-    if (!token) {
-        uploadStatus.textContent = "Your session expired. Please log in again.";
-        return;
-    }
-
     const formData = new FormData();
     formData.append("file", file);
 
@@ -156,9 +165,12 @@ document.getElementById("upload-form").addEventListener("submit", async (event) 
     resultSection.classList.add("hidden");
 
     try {
+        const headers = token
+            ? { "Authorization": `Bearer ${token}` }
+            : {};
         const response = await fetch("/uploads", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${token}` },
+            headers,
             body: formData
         });
 
