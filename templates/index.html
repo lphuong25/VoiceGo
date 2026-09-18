@@ -67,6 +67,27 @@
                     <button id="save-btn" class="secondary">Save Result</button>
                 </div>
                 <div id="vocabulary-list"></div>
+                <div class="analytics-section">
+                    <h3>Learning Insights</h3>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-value" id="total-vocabulary">0</span>
+                            <span class="stat-label">Vocabulary Found</span>
+                        </div>
+
+                        <div class="stat-card">
+                            <span class="stat-value" id="average-word-length">0</span>
+                            <span class="stat-label">Avg. Characters / Word</span>
+                        </div>
+                    </div>
+
+                    <div class="jlpt-chart">
+                        <h4>JLPT Vocabulary Distribution</h4>
+
+                        <div id="jlpt-chart-container"></div>
+                    </div>
+                </div>
             </div>
         </section>
     </section>
@@ -210,6 +231,62 @@ document.getElementById("upload-form").addEventListener("submit", async (event) 
         if (!total) {
             vocabContainer.innerHTML =
                 '<p class="muted">No matching JLPT vocabulary was found.</p>';
+        }
+
+        // ----------------------------
+        // Learning analytics
+        // ----------------------------
+
+        document.getElementById("total-vocabulary").textContent =
+            data.total_vocabulary;
+
+        document.getElementById("average-word-length").textContent =
+            data.average_word_length;
+
+        const chartContainer =
+            document.getElementById("jlpt-chart-container");
+
+        chartContainer.innerHTML = "";
+
+        const jlptLevels = ["N5", "N4", "N3", "N2", "N1"];
+
+        for (const level of jlptLevels) {
+            const count = data.jlpt_counts[level] || 0;
+
+            const row = document.createElement("div");
+            row.className = "chart-row";
+
+            const label = document.createElement("span");
+            label.className = "chart-label";
+            label.textContent = level;
+
+            const barContainer = document.createElement("div");
+            barContainer.className = "bar-container";
+
+            const bar = document.createElement("div");
+            bar.className = "bar";
+
+            // Scale the bar relative to the largest JLPT count
+            const maxCount = Math.max(
+                ...jlptLevels.map(
+                    level => data.jlpt_counts[level] || 0
+                ),
+                1
+            );
+
+            bar.style.width =
+                `${(count / maxCount) * 100}%`;
+
+            const value = document.createElement("span");
+            value.className = "bar-value";
+            value.textContent = count;
+
+            barContainer.appendChild(bar);
+            row.appendChild(label);
+            row.appendChild(barContainer);
+            row.appendChild(value);
+
+            chartContainer.appendChild(row);
         }
 
         localStorage.setItem("vocabulary_list",

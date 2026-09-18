@@ -102,15 +102,42 @@ async def upload_audio(file: UploadFile = File(...)):
 
         print("Vocabulary:", vocabulary_list)
 
+        # Calculate basic learning statistics
+        jlpt_counts = {
+            level: len(words)
+            for level, words in vocabulary_list.items()
+        }
+
+        total_vocabulary = sum(jlpt_counts.values())
+
+        all_words = [
+            word["Word"]
+            for words in vocabulary_list.values()
+            for word in words
+        ]
+
+        average_word_length = (
+            round(
+                sum(len(word) for word in all_words) / len(all_words),
+                2
+            )
+            if all_words
+            else 0
+        )
+
         return {
             "filename": file.filename,
             "transcription": transcription,
             "translation": translation,
             "vocabulary_list": vocabulary_list,
-            "word_count": sum(
-                len(words)
-                for words in vocabulary_list.values()
-            ),
+
+            # Existing statistic
+            "word_count": total_vocabulary,
+
+            # New analytics
+            "jlpt_counts": jlpt_counts,
+            "total_vocabulary": total_vocabulary,
+            "average_word_length": average_word_length,
         }
 
     except Exception as e:
