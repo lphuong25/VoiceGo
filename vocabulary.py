@@ -3,8 +3,7 @@
 import os
 
 import fugashi
-from supabase import Client
-from supabase.client import create_client
+from supabase import create_client
 
 
 # --------------------------------------------------
@@ -22,7 +21,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
         "SUPABASE_URL and SUPABASE_ANON_KEY must be set in your .env file."
     )
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # --------------------------------------------------
