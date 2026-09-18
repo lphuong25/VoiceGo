@@ -100,6 +100,94 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentResult = null;
 
+// keep the analysis data after clicking flash card
+const ANALYSIS_STORAGE_KEY = "voicego_analysis";
+
+function displayAnalysis(data) {
+    currentResult = data;
+
+    document.getElementById("transcription").textContent =
+        data.transcription || "";
+
+    document.getElementById("translation").textContent =
+        data.translation || "";
+
+    const vocabContainer = document.getElementById("vocabulary-list");
+    vocabContainer.innerHTML = "";
+
+    let total = 0;
+
+    for (const [level, words] of Object.entries(data.vocabulary_list || {})) {
+        if (!words.length) continue;
+
+        total += words.length;
+
+        const group = document.createElement("div");
+        group.className = "vocab-group";
+
+        const title = document.createElement("h4");
+        title.textContent = `${level} (${words.length})`;
+        group.appendChild(title);
+
+        words.forEach(word => {
+            const item = document.createElement("div");
+            item.className = "vocab-item";
+
+            item.textContent =
+                `${word.Word} (${word.Pronunciation}) — ${word.Meaning}`;
+
+            group.appendChild(item);
+        });
+
+        vocabContainer.appendChild(group);
+    }
+
+    if (!total) {
+        vocabContainer.innerHTML =
+            '<p class="muted">No matching JLPT vocabulary was found.</p>';
+    }
+
+    // Learning analytics
+    document.getElementById("total-vocabulary").textContent =
+        data.total_vocabulary || 0;
+
+    document.getElementById("average-word-length").textContent =
+        data.average_word_length || 0;
+
+    const chartContainer =
+        document.getElementById("jlpt-chart-container");
+
+    chartContainer.innerHTML = "";
+
+    const jlptLevels = ["N5", "N4", "N3", "N2", "N1"];
+
+    const maxCount = Math.max(
+        ...jlptLevels.map(
+            level => (data.jlpt_counts || {})[level] || 0
+        ),
+        1
+    );
+
+    for (const level of jlptLevels) {
+        const count = (data.jlpt_counts || {})[level] || 0;
+
+        const row = document.createElement("div");
+        row.className = "jlpt-row";
+
+        const label = document.createElement("span");
+        label.textContent = `${level}: ${count}`;
+
+        const bar = document.createElement("div");
+        bar.className = "jlpt-bar";
+        bar.style.width = `${(count / maxCount) * 100}%`;
+
+        row.appendChild(label);
+        row.appendChild(bar);
+        chartContainer.appendChild(row);
+    }
+}
+
+
 const authSection = document.getElementById("auth-section");
 const appSection = document.getElementById("app-section");
 const accountStatus = document.getElementById("account-status");
@@ -332,7 +420,34 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         : (data.detail || "Could not save result.");
 });
 
+// Page load restore session
+function restorePreviousAnalysis() {
+    const savedAnalysis =
+        sessionStorage.getItem(ANALYSIS_STORAGE_KEY);
+
+    if (!savedAnalysis) return;
+
+    try {
+        const data = JSON.parse(savedAnalysis);
+
+        displayAnalysis(data);
+
+        uploadStatus.textContent =
+            "Previous analysis restored.";
+    } catch (error) {
+        console.error(
+            "Could not restore previous analysis:",
+            error
+        );
+
+        sessionStorage.removeItem(ANALYSIS_STORAGE_KEY);
+    }
+}
+
 restoreSession();
+restorePreviousAnalysis();
+
+
 </script>
 </body>
 </html>
