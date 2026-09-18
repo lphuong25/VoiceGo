@@ -1,453 +1,1049 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VoiceGo | Japanese Audio Analyzer</title>
-<link rel="stylesheet" href="/static/style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>VoiceGo | Japanese Audio Analyzer</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
+
 <main class="page">
+
     <header class="hero">
         <p class="eyebrow">JAPANESE LEARNING TOOL</p>
+
         <h1>VoiceGo</h1>
-        <p>Turn Japanese audio into a transcript, English translation, and JLPT-level vocabulary.</p>
+
+        <p>
+            Turn Japanese audio into a transcript, English translation,
+            and JLPT-level vocabulary.
+        </p>
     </header>
 
+
+    <!-- ========================= -->
+    <!-- Authentication -->
+    <!-- ========================= -->
+
     <section id="auth-section" class="card hidden">
+
         <h2>Get started</h2>
-        <p class="muted">Optional: sign in to save your learning history.</p>
+
+        <p class="muted">
+            Optional: sign in to save your learning history.
+        </p>
+
         <div class="form-grid">
-            <input id="username" type="email" placeholder="Email" autocomplete="email">
-            <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+
+            <input
+                id="username"
+                type="email"
+                placeholder="Email"
+                autocomplete="email"
+            >
+
+            <input
+                id="password"
+                type="password"
+                placeholder="Password"
+                autocomplete="current-password"
+            >
+
         </div>
+
         <div class="button-row">
-            <button id="signup-btn">Sign Up</button>
-            <button id="login-btn" class="secondary">Login</button>
+
+            <button id="signup-btn">
+                Sign Up
+            </button>
+
+            <button id="login-btn" class="secondary">
+                Login
+            </button>
+
         </div>
+
         <p id="auth-msg" class="status"></p>
+
     </section>
+
+
+    <!-- ========================= -->
+    <!-- Main application -->
+    <!-- ========================= -->
 
     <section id="app-section">
+
         <div class="topbar">
-            <div id="account-status">Guest mode</div>
-            <div class="button-row">
-                <a href="/flashcard" class="button secondary">Flashcards</a>
-                <button id="login-toggle-btn" class="secondary">Log in</button>
-                <button id="logout-btn" class="secondary hidden">Logout</button>
+
+            <div id="account-status">
+                Guest mode
             </div>
+
+            <div class="button-row">
+
+                <a
+                    href="/flashcard"
+                    class="button secondary"
+                >
+                    Flashcards
+                </a>
+
+                <button
+                    id="login-toggle-btn"
+                    class="secondary"
+                >
+                    Log in
+                </button>
+
+                <button
+                    id="logout-btn"
+                    class="secondary hidden"
+                >
+                    Logout
+                </button>
+
+            </div>
+
         </div>
 
+
+        <!-- ========================= -->
+        <!-- Audio analyzer -->
+        <!-- ========================= -->
+
         <section class="card">
+
             <h2>Analyze Japanese audio</h2>
-            <p class="muted">Supported: MP3, WAV, M4A, OGG, WEBM · Maximum 25 MB</p>
+
+            <p class="muted">
+                Supported: MP3, WAV, M4A, OGG, WEBM · Maximum 25 MB
+            </p>
+
             <form id="upload-form">
-                <input id="audio-file" type="file" name="file"
-                       accept=".mp3,.wav,.m4a,.ogg,.webm,audio/*" required>
-                <button id="analyze-btn" type="submit">Analyze Audio</button>
+
+                <input
+                    id="audio-file"
+                    type="file"
+                    name="file"
+                    accept=".mp3,.wav,.m4a,.ogg,.webm,audio/*"
+                    required
+                >
+
+                <button
+                    id="analyze-btn"
+                    type="submit"
+                >
+                    Analyze Audio
+                </button>
+
             </form>
+
             <p id="upload-status" class="status"></p>
+
         </section>
+
+
+        <!-- ========================= -->
+        <!-- Analysis results -->
+        <!-- ========================= -->
 
         <section id="result" class="card hidden">
-            <div class="result-section">
-                <h3>Japanese transcription</h3>
-                <p id="transcription" class="result-text"></p>
-            </div>
 
             <div class="result-section">
-                <h3>English translation</h3>
-                <p id="translation" class="result-text"></p>
+
+                <h3>
+                    Japanese transcription
+                </h3>
+
+                <p
+                    id="transcription"
+                    class="result-text"
+                ></p>
+
             </div>
 
+
             <div class="result-section">
+
+                <h3>
+                    English translation
+                </h3>
+
+                <p
+                    id="translation"
+                    class="result-text"
+                ></p>
+
+            </div>
+
+
+            <div class="result-section">
+
                 <div class="section-heading">
-                    <h3>JLPT vocabulary</h3>
-                    <button id="save-btn" class="secondary">Save Result</button>
+
+                    <h3>
+                        JLPT vocabulary
+                    </h3>
+
+                    <button
+                        id="save-btn"
+                        class="secondary"
+                    >
+                        Save Result
+                    </button>
+
                 </div>
+
+
                 <div id="vocabulary-list"></div>
+
+
+                <!-- ========================= -->
+                <!-- Learning analytics -->
+                <!-- ========================= -->
+
                 <div class="analytics-section">
-                    <h3>Learning Insights</h3>
+
+                    <h3>
+                        Learning Insights
+                    </h3>
+
 
                     <div class="stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-value" id="total-vocabulary">0</span>
-                            <span class="stat-label">Vocabulary Found</span>
-                        </div>
 
                         <div class="stat-card">
-                            <span class="stat-value" id="average-word-length">0</span>
-                            <span class="stat-label">Avg. Characters / Word</span>
+
+                            <span
+                                class="stat-value"
+                                id="total-vocabulary"
+                            >
+                                0
+                            </span>
+
+                            <span class="stat-label">
+                                Vocabulary Found
+                            </span>
+
                         </div>
+
+
+                        <div class="stat-card">
+
+                            <span
+                                class="stat-value"
+                                id="average-word-length"
+                            >
+                                0
+                            </span>
+
+                            <span class="stat-label">
+                                Avg. Characters / Word
+                            </span>
+
+                        </div>
+
                     </div>
+
 
                     <div class="jlpt-chart">
-                        <h4>JLPT Vocabulary Distribution</h4>
+
+                        <h4>
+                            JLPT Vocabulary Distribution
+                        </h4>
 
                         <div id="jlpt-chart-container"></div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </section>
+
     </section>
+
 </main>
 
+
 <script>
+
+/* ==========================================
+   Supabase configuration
+   ========================================== */
+
 const SUPABASE_URL = "{{ SUPABASE_URL }}";
+
 const SUPABASE_ANON_KEY = "{{ SUPABASE_ANON_KEY }}";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const supabaseClient =
+    supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+    );
+
+
+/* ==========================================
+   Application state
+   ========================================== */
 
 let currentResult = null;
 
-// keep the analysis data after clicking flash card
+
+/*
+    Storage key for the most recent analysis.
+
+    sessionStorage means:
+    - survives page navigation
+    - survives going to Flashcards and back
+    - survives a page refresh during the session
+    - does NOT permanently save the analysis
+*/
 const ANALYSIS_STORAGE_KEY = "voicego_analysis";
 
+
+/* ==========================================
+   DOM elements
+   ========================================== */
+
+const authSection =
+    document.getElementById("auth-section");
+
+const appSection =
+    document.getElementById("app-section");
+
+const accountStatus =
+    document.getElementById("account-status");
+
+const loginToggleButton =
+    document.getElementById("login-toggle-btn");
+
+const logoutButton =
+    document.getElementById("logout-btn");
+
+const authMsg =
+    document.getElementById("auth-msg");
+
+const uploadStatus =
+    document.getElementById("upload-status");
+
+const resultSection =
+    document.getElementById("result");
+
+
+/* ==========================================
+   Display analysis results
+   ========================================== */
+
 function displayAnalysis(data) {
+
     currentResult = data;
+
+
+    /* --------------------------------------
+       Transcription
+       -------------------------------------- */
 
     document.getElementById("transcription").textContent =
         data.transcription || "";
 
+
+    /* --------------------------------------
+       Translation
+       -------------------------------------- */
+
     document.getElementById("translation").textContent =
         data.translation || "";
 
-    const vocabContainer = document.getElementById("vocabulary-list");
+
+    /* --------------------------------------
+       Vocabulary
+       -------------------------------------- */
+
+    const vocabContainer =
+        document.getElementById("vocabulary-list");
+
     vocabContainer.innerHTML = "";
 
     let total = 0;
 
-    for (const [level, words] of Object.entries(data.vocabulary_list || {})) {
-        if (!words.length) continue;
+    for (
+        const [level, words]
+        of Object.entries(data.vocabulary_list || {})
+    ) {
+
+        if (!words.length) {
+            continue;
+        }
 
         total += words.length;
 
-        const group = document.createElement("div");
-        group.className = "vocab-group";
 
-        const title = document.createElement("h4");
-        title.textContent = `${level} (${words.length})`;
+        const group =
+            document.createElement("div");
+
+        group.className =
+            "vocab-group";
+
+
+        const title =
+            document.createElement("h4");
+
+        title.textContent =
+            `${level} (${words.length})`;
+
+
         group.appendChild(title);
 
+
         words.forEach(word => {
-            const item = document.createElement("div");
-            item.className = "vocab-item";
+
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "vocab-item";
+
 
             item.textContent =
                 `${word.Word} (${word.Pronunciation}) — ${word.Meaning}`;
 
+
             group.appendChild(item);
+
         });
 
+
         vocabContainer.appendChild(group);
+
     }
+
 
     if (!total) {
+
         vocabContainer.innerHTML =
             '<p class="muted">No matching JLPT vocabulary was found.</p>';
+
     }
 
-    // Learning analytics
-    document.getElementById("total-vocabulary").textContent =
+
+    /* --------------------------------------
+       Learning analytics
+       -------------------------------------- */
+
+    document.getElementById(
+        "total-vocabulary"
+    ).textContent =
         data.total_vocabulary || 0;
 
-    document.getElementById("average-word-length").textContent =
+
+    document.getElementById(
+        "average-word-length"
+    ).textContent =
         data.average_word_length || 0;
 
+
+    /* --------------------------------------
+       JLPT chart
+       -------------------------------------- */
+
     const chartContainer =
-        document.getElementById("jlpt-chart-container");
+        document.getElementById(
+            "jlpt-chart-container"
+        );
 
     chartContainer.innerHTML = "";
 
-    const jlptLevels = ["N5", "N4", "N3", "N2", "N1"];
 
-    const maxCount = Math.max(
-        ...jlptLevels.map(
-            level => (data.jlpt_counts || {})[level] || 0
-        ),
-        1
-    );
+    const jlptLevels =
+        ["N5", "N4", "N3", "N2", "N1"];
+
+
+    const maxCount =
+        Math.max(
+            ...jlptLevels.map(
+                level =>
+                    (data.jlpt_counts || {})[level] || 0
+            ),
+            1
+        );
+
 
     for (const level of jlptLevels) {
-        const count = (data.jlpt_counts || {})[level] || 0;
 
-        const row = document.createElement("div");
-        row.className = "jlpt-row";
+        const count =
+            (data.jlpt_counts || {})[level] || 0;
 
-        const label = document.createElement("span");
-        label.textContent = `${level}: ${count}`;
 
-        const bar = document.createElement("div");
-        bar.className = "jlpt-bar";
-        bar.style.width = `${(count / maxCount) * 100}%`;
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "chart-row";
+
+
+        const label =
+            document.createElement("span");
+
+        label.className =
+            "chart-label";
+
+        label.textContent =
+            level;
+
+
+        const barContainer =
+            document.createElement("div");
+
+        barContainer.className =
+            "bar-container";
+
+
+        const bar =
+            document.createElement("div");
+
+        bar.className =
+            "bar";
+
+
+        bar.style.width =
+            `${(count / maxCount) * 100}%`;
+
+
+        const value =
+            document.createElement("span");
+
+        value.className =
+            "bar-value";
+
+        value.textContent =
+            count;
+
+
+        barContainer.appendChild(bar);
 
         row.appendChild(label);
-        row.appendChild(bar);
+
+        row.appendChild(barContainer);
+
+        row.appendChild(value);
+
         chartContainer.appendChild(row);
+
     }
+
+
+    /* --------------------------------------
+       Show results
+       -------------------------------------- */
+
+    resultSection.classList.remove("hidden");
+
 }
 
 
-const authSection = document.getElementById("auth-section");
-const appSection = document.getElementById("app-section");
-const accountStatus = document.getElementById("account-status");
-const loginToggleButton = document.getElementById("login-toggle-btn");
-const logoutButton = document.getElementById("logout-btn");
-const authMsg = document.getElementById("auth-msg");
-const uploadStatus = document.getElementById("upload-status");
-const resultSection = document.getElementById("result");
+/* ==========================================
+   Authentication UI
+   ========================================== */
 
 function showApp(user) {
+
     authSection.classList.add("hidden");
+
     appSection.classList.remove("hidden");
-    accountStatus.textContent = `Signed in as ${user.email}`;
+
+    accountStatus.textContent =
+        `Signed in as ${user.email}`;
+
     loginToggleButton.classList.add("hidden");
+
     logoutButton.classList.remove("hidden");
+
 }
+
 
 function showAuth() {
+
     authSection.classList.add("hidden");
+
     appSection.classList.remove("hidden");
-    accountStatus.textContent = "Guest mode";
+
+    accountStatus.textContent =
+        "Guest mode";
+
     loginToggleButton.classList.remove("hidden");
+
     logoutButton.classList.add("hidden");
+
 }
 
-loginToggleButton.addEventListener("click", () => {
-    authSection.classList.toggle("hidden");
-    authMsg.textContent = "";
-});
+
+/* ==========================================
+   Login panel
+   ========================================== */
+
+loginToggleButton.addEventListener(
+    "click",
+    () => {
+
+        authSection.classList.toggle("hidden");
+
+        authMsg.textContent = "";
+
+    }
+);
+
+
+/* ==========================================
+   Restore Supabase login session
+   ========================================== */
 
 async function restoreSession() {
-    const { data } = await supabaseClient.auth.getSession();
-    if (data.session) showApp(data.session.user);
+
+    const { data } =
+        await supabaseClient.auth.getSession();
+
+    if (data.session) {
+
+        showApp(data.session.user);
+
+    }
+
 }
 
-document.getElementById("signup-btn").addEventListener("click", async () => {
-    const email = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
 
-    const { error } = await supabaseClient.auth.signUp({ email, password });
-    authMsg.textContent = error
-        ? error.message
-        : "Account created. Check your email if confirmation is enabled.";
-});
+/* ==========================================
+   Sign up
+   ========================================== */
 
-document.getElementById("login-btn").addEventListener("click", async () => {
-    const email = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
+document
+    .getElementById("signup-btn")
+    .addEventListener(
+        "click",
+        async () => {
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email, password
-    });
+            const email =
+                document
+                    .getElementById("username")
+                    .value
+                    .trim();
 
-    if (error) {
-        authMsg.textContent = error.message;
-        return;
-    }
 
-    authMsg.textContent = "";
-    showApp(data.user);
-});
+            const password =
+                document
+                    .getElementById("password")
+                    .value;
 
-document.getElementById("logout-btn").addEventListener("click", async () => {
-    await supabaseClient.auth.signOut();
-    showAuth();
-    resultSection.classList.add("hidden");
-});
 
-document.getElementById("upload-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
+            const { error } =
+                await supabaseClient.auth.signUp({
+                    email,
+                    password
+                });
 
-    const file = document.getElementById("audio-file").files[0];
-    if (!file) return;
 
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    const token = sessionData.session?.access_token;
+            authMsg.textContent =
+                error
+                    ? error.message
+                    : "Account created. Check your email if confirmation is enabled.";
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const analyzeButton = document.getElementById("analyze-btn");
-    analyzeButton.disabled = true;
-    uploadStatus.textContent = "Analyzing audio... Whisper may take a moment.";
-    resultSection.classList.add("hidden");
-
-    try {
-        const headers = token
-            ? { "Authorization": `Bearer ${token}` }
-            : {};
-        const response = await fetch("/uploads", {
-            method: "POST",
-            headers,
-            body: formData
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || "Analysis failed.");
-
-        currentResult = data;
-        document.getElementById("transcription").textContent = data.transcription;
-        document.getElementById("translation").textContent = data.translation;
-
-        const vocabContainer = document.getElementById("vocabulary-list");
-        vocabContainer.innerHTML = "";
-
-        let total = 0;
-        for (const [level, words] of Object.entries(data.vocabulary_list)) {
-            if (!words.length) continue;
-            total += words.length;
-
-            const group = document.createElement("div");
-            group.className = "vocab-group";
-
-            const title = document.createElement("h4");
-            title.textContent = `${level} (${words.length})`;
-            group.appendChild(title);
-
-            words.forEach(word => {
-                const item = document.createElement("div");
-                item.className = "vocab-item";
-                item.textContent =
-                    `${word.Word} (${word.Pronunciation}) — ${word.Meaning}`;
-                group.appendChild(item);
-            });
-
-            vocabContainer.appendChild(group);
         }
+    );
 
-        if (!total) {
-            vocabContainer.innerHTML =
-                '<p class="muted">No matching JLPT vocabulary was found.</p>';
+
+/* ==========================================
+   Login
+   ========================================== */
+
+document
+    .getElementById("login-btn")
+    .addEventListener(
+        "click",
+        async () => {
+
+            const email =
+                document
+                    .getElementById("username")
+                    .value
+                    .trim();
+
+
+            const password =
+                document
+                    .getElementById("password")
+                    .value;
+
+
+            const { data, error } =
+                await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+
+            if (error) {
+
+                authMsg.textContent =
+                    error.message;
+
+                return;
+
+            }
+
+
+            authMsg.textContent = "";
+
+            showApp(data.user);
+
         }
+    );
 
-        // ----------------------------
-        // Learning analytics
-        // ----------------------------
 
-        document.getElementById("total-vocabulary").textContent =
-            data.total_vocabulary;
+/* ==========================================
+   Logout
+   ========================================== */
 
-        document.getElementById("average-word-length").textContent =
-            data.average_word_length;
+document
+    .getElementById("logout-btn")
+    .addEventListener(
+        "click",
+        async () => {
 
-        const chartContainer =
-            document.getElementById("jlpt-chart-container");
+            await supabaseClient.auth.signOut();
 
-        chartContainer.innerHTML = "";
+            showAuth();
 
-        const jlptLevels = ["N5", "N4", "N3", "N2", "N1"];
+            resultSection.classList.add("hidden");
 
-        for (const level of jlptLevels) {
-            const count = data.jlpt_counts[level] || 0;
+        }
+    );
 
-            const row = document.createElement("div");
-            row.className = "chart-row";
 
-            const label = document.createElement("span");
-            label.className = "chart-label";
-            label.textContent = level;
+/* ==========================================
+   Audio analysis
+   ========================================== */
 
-            const barContainer = document.createElement("div");
-            barContainer.className = "bar-container";
+document
+    .getElementById("upload-form")
+    .addEventListener(
+        "submit",
+        async (event) => {
 
-            const bar = document.createElement("div");
-            bar.className = "bar";
+            event.preventDefault();
 
-            // Scale the bar relative to the largest JLPT count
-            const maxCount = Math.max(
-                ...jlptLevels.map(
-                    level => data.jlpt_counts[level] || 0
-                ),
-                1
+
+            const file =
+                document
+                    .getElementById("audio-file")
+                    .files[0];
+
+
+            if (!file) {
+                return;
+            }
+
+
+            const { data: sessionData } =
+                await supabaseClient.auth.getSession();
+
+
+            const token =
+                sessionData.session?.access_token;
+
+
+            const formData =
+                new FormData();
+
+
+            formData.append(
+                "file",
+                file
             );
 
-            bar.style.width =
-                `${(count / maxCount) * 100}%`;
 
-            const value = document.createElement("span");
-            value.className = "bar-value";
-            value.textContent = count;
+            const analyzeButton =
+                document.getElementById(
+                    "analyze-btn"
+                );
 
-            barContainer.appendChild(bar);
-            row.appendChild(label);
-            row.appendChild(barContainer);
-            row.appendChild(value);
 
-            chartContainer.appendChild(row);
+            analyzeButton.disabled =
+                true;
+
+
+            uploadStatus.textContent =
+                "Analyzing audio... Whisper may take a moment.";
+
+
+            resultSection.classList.add(
+                "hidden"
+            );
+
+
+            try {
+
+                const headers =
+                    token
+                        ? {
+                            "Authorization":
+                                `Bearer ${token}`
+                          }
+                        : {};
+
+
+                const response =
+                    await fetch(
+                        "/uploads",
+                        {
+                            method: "POST",
+                            headers,
+                            body: formData
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.detail ||
+                        "Analysis failed."
+                    );
+
+                }
+
+
+                /* ----------------------------------
+                   Save the current analysis
+                   ---------------------------------- */
+
+                currentResult = data;
+
+
+                /*
+                    THIS IS THE IMPORTANT FIX.
+
+                    Save the complete analysis to
+                    sessionStorage.
+
+                    When the user goes to Flashcards
+                    and returns to this page, we can
+                    retrieve this data.
+                */
+
+                sessionStorage.setItem(
+                    ANALYSIS_STORAGE_KEY,
+                    JSON.stringify(data)
+                );
+
+
+                /* ----------------------------------
+                   Keep vocabulary for Flashcards
+                   ---------------------------------- */
+
+                localStorage.setItem(
+                    "vocabulary_list",
+                    JSON.stringify(
+                        data.vocabulary_list
+                    )
+                );
+
+
+                /* ----------------------------------
+                   Display results
+                   ---------------------------------- */
+
+                displayAnalysis(data);
+
+
+                uploadStatus.textContent =
+                    "Analysis complete.";
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Analysis error:",
+                    error
+                );
+
+                uploadStatus.textContent =
+                    error.message;
+
+            }
+            finally {
+
+                analyzeButton.disabled =
+                    false;
+
+            }
+
         }
+    );
 
-        localStorage.setItem("vocabulary_list",
-            JSON.stringify(data.vocabulary_list));
 
-        resultSection.classList.remove("hidden");
-        uploadStatus.textContent = "Analysis complete.";
-    } catch (error) {
-        uploadStatus.textContent = error.message;
-    } finally {
-        analyzeButton.disabled = false;
-    }
-});
+/* ==========================================
+   Save result to Supabase
+   ========================================== */
 
-document.getElementById("save-btn").addEventListener("click", async () => {
-    if (!currentResult) return;
+document
+    .getElementById("save-btn")
+    .addEventListener(
+        "click",
+        async () => {
 
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    const session = sessionData.session;
+            if (!currentResult) {
+                return;
+            }
 
-    if (!session) {
-        uploadStatus.textContent = "Please log in again.";
+
+            const { data: sessionData } =
+                await supabaseClient.auth.getSession();
+
+
+            const session =
+                sessionData.session;
+
+
+            if (!session) {
+
+                uploadStatus.textContent =
+                    "Please log in again.";
+
+                return;
+
+            }
+
+
+            const response =
+                await fetch(
+                    "/save_user_data",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                `Bearer ${session.access_token}`
+                        },
+
+                        body: JSON.stringify({
+
+                            user_id:
+                                session.user.id,
+
+                            transcription:
+                                currentResult.transcription,
+
+                            translation:
+                                currentResult.translation,
+
+                            vocabulary_list:
+                                currentResult.vocabulary_list
+
+                        })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            uploadStatus.textContent =
+                response.ok
+                    ? "Result saved to your account."
+                    : (
+                        data.detail ||
+                        "Could not save result."
+                    );
+
+        }
+    );
+
+
+/* ==========================================
+   Restore previous analysis
+   ========================================== */
+
+function restorePreviousAnalysis() {
+
+    const savedAnalysis =
+        sessionStorage.getItem(
+            ANALYSIS_STORAGE_KEY
+        );
+
+
+    /*
+        No previous analysis exists.
+        This is normal when opening VoiceGo
+        for the first time.
+    */
+
+    if (!savedAnalysis) {
         return;
     }
 
-    const response = await fetch("/save_user_data", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-            user_id: session.user.id,
-            transcription: currentResult.transcription,
-            translation: currentResult.translation,
-            vocabulary_list: currentResult.vocabulary_list
-        })
-    });
-
-    const data = await response.json();
-    uploadStatus.textContent = response.ok
-        ? "Result saved to your account."
-        : (data.detail || "Could not save result.");
-});
-
-// Page load restore session
-function restorePreviousAnalysis() {
-    const savedAnalysis =
-        sessionStorage.getItem(ANALYSIS_STORAGE_KEY);
-
-    if (!savedAnalysis) return;
 
     try {
-        const data = JSON.parse(savedAnalysis);
+
+        const data =
+            JSON.parse(savedAnalysis);
+
+
+        /*
+            Use the same display function
+            used after a new analysis.
+        */
 
         displayAnalysis(data);
 
+
         uploadStatus.textContent =
             "Previous analysis restored.";
-    } catch (error) {
+
+    }
+    catch (error) {
+
         console.error(
             "Could not restore previous analysis:",
             error
         );
 
-        sessionStorage.removeItem(ANALYSIS_STORAGE_KEY);
+
+        sessionStorage.removeItem(
+            ANALYSIS_STORAGE_KEY
+        );
+
     }
+
 }
 
+
+/* ==========================================
+   Initialize application
+   ========================================== */
+
 restoreSession();
+
 restorePreviousAnalysis();
 
-
 </script>
+
 </body>
 </html>
+```
