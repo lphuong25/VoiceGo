@@ -1,250 +1,209 @@
+# VoiceGo 
 
+**VoiceGo** is a Japanese audio analysis web application that helps learners analyze spoken Japanese by converting audio into text, translating the transcription, and identifying useful vocabulary.
 
-# VoiceGo 🎙️
+The project combines **speech-to-text, natural language processing, vocabulary analysis, and a web interface** to provide a simple Japanese learning workflow.
 
-**VoiceGo is a Japanese audio learning tool that turns spoken Japanese into study material.**
+**Access it here**: [VoiceGo](https://voicego-2fw7.onrender.com/)
+(The sample file used below is in this <audio controls src="https://archive.org/details/jlpt-stories/%2309+-+%E5%83%95%E3%81%AE%E5%A4%A7%E5%88%87%E3%81%AA%E5%AE%B6%E6%97%8F+%E2%80%93+JLPT+N4.mp3" title="link, number 6"></audio> )
+## Features
 
-Upload a short Japanese audio clip and VoiceGo:
+* Upload Japanese audio files for analysis
+* Convert Japanese speech to text using Whisper
+* Translate Japanese transcriptions into English
+* Extract and identify Japanese vocabulary
+* Match extracted vocabulary with JLPT-level information
+* Generate vocabulary flashcards
+* Filter extracted words to focus on useful vocabulary
+* Simple web interface for interacting with the analysis pipeline
 
-1. Transcribes the audio with **OpenAI Whisper Large V3 Turbo through Groq**
-2. Translates the Japanese transcript into English with **DeepL API Free**
-3. Tokenizes the Japanese text with **fugashi**
-4. Matches words against a bundled **JLPT vocabulary SQLite database**
-5. Groups vocabulary by **JLPT N5–N1**
-6. Lets the user review the extracted words as **interactive flashcards**
-7. Allows authenticated users to save analysis results with **Supabase**
+## Audio Analysis Pipeline
 
-This project is intentionally lightweight: the web server does **not** download or run Whisper locally. That keeps deployment practical on free hosting.
+VoiceGo processes uploaded Japanese audio through several stages:
 
-## Architecture
+1. **Audio Upload** – The user uploads a supported audio file.
+2. **Speech-to-Text** – Japanese speech is transcribed using **Whisper**.
+3. **Translation** – The Japanese transcription is translated into English using **DeepL**.
+4. **Text Processing** – The Japanese transcription is analyzed and tokenized using **fugashi**.
+5. **Vocabulary Matching** – Extracted words are compared against a Japanese vocabulary database stored in **Supabase**.
+6. **Learning Output** – Relevant vocabulary is displayed with information such as reading, English meaning, and JLPT level.
 
-```text
-                         ┌──────────────────────┐
-                         │      VoiceGo UI      │
-                         │   HTML / CSS / JS    │
-                         └──────────┬───────────┘
-                                    │
-                              FastAPI backend
-                                    │
-             ┌──────────────────────┼──────────────────────┐
-             │                      │                      │
-             ▼                      ▼                      ▼
-      Groq Whisper             DeepL API             Local SQLite
-   Japanese transcription    Japanese → English      JLPT vocabulary
-             │                      │                      │
-             └──────────────────────┼──────────────────────┘
-                                    ▼
-                            Results / Flashcards
-                                    │
-                                    ▼
-                              Supabase Auth
-                            + saved_data table
-```
+This creates a data pipeline that transforms raw audio into structured learning information.
 
-### Why Whisper is not inside Supabase
+## Data Processing
 
-Supabase is being used as the application's **database and authentication layer**. A database service is not intended to host a Python Whisper model.
+VoiceGo uses natural language processing techniques to extract useful information from Japanese transcriptions.
 
-The updated version sends the uploaded audio directly from the FastAPI server to Groq's hosted Whisper endpoint. This removes the large local model and makes the backend small enough for a free web host.
+The application:
 
-Groq currently provides `whisper-large-v3-turbo`, a multilingual Whisper model with direct audio uploads. The speech-to-text endpoint accepts common formats such as MP3, WAV, M4A, OGG, and WEBM. The application limits uploads to 25 MB to stay within the free-tier upload limit. See the [Groq Speech-to-Text documentation](https://console.groq.com/docs/speech-to-text).
+* Tokenizes Japanese text
+* Identifies vocabulary from the transcription
+* Filters out punctuation and less useful grammatical elements
+* Removes unnecessary one-character hiragana
+* Matches extracted words against a vocabulary dataset
+* Associates vocabulary with JLPT difficulty levels
 
-## Main technologies
+The vocabulary data is stored in a **Supabase PostgreSQL database** and queried when analyzing a transcription.
 
-| Area | Technology |
-|---|---|
-| Backend | Python, FastAPI |
-| Speech recognition | Groq API + Whisper Large V3 Turbo |
-| Translation | DeepL API Free |
-| Japanese NLP | fugashi |
-| Vocabulary data | SQLite + JLPT vocabulary dataset |
-| Authentication | Supabase Auth |
-| User data | Supabase PostgreSQL |
-| Frontend | HTML, CSS, JavaScript |
-| Deployment | Render Free Web Service |
-| Testing / development | Python + Uvicorn |
+## Database
 
-## Project structure
+VoiceGo uses **Supabase** to store Japanese vocabulary data.
 
-```text
-VoiceGo/
-├── main.py                  # FastAPI application and API routes
-├── transcription.py         # Groq Whisper integration
-├── translation.py           # DeepL translation
-├── vocabulary.py            # Japanese tokenization + JLPT lookup
-├── userdata.py              # Supabase saved-data operations
-├── JLPTVocabulary.db        # Bundled JLPT vocabulary database
-├── requirements.txt
-├── render.yaml              # Render deployment configuration
-├── .env.example
-├── supabase/
-│   └── schema.sql           # Saved-data table + RLS policies
-├── templates/
-│   ├── index.html           # Login + audio analysis
-│   └── flashcard.html       # Vocabulary flashcards
-└── static/
-    └── style.css
-```
+The vocabulary dataset contains information such as:
 
-## Run locally
+* Japanese kanji
+* Hiragana readings
+* English meanings
+* JLPT levels
 
-### 1. Clone the repository
+The database allows the application to dynamically match words found in user transcriptions with vocabulary information.
+
+## AI / NLP Technologies
+
+VoiceGo uses several technologies to process and analyze Japanese audio:
+
+| Technology    | Purpose                               |
+| ------------- | ------------------------------------- |
+| **Whisper**   | Japanese speech-to-text transcription |
+| **DeepL API** | Japanese-to-English translation       |
+| **fugashi**   | Japanese text tokenization            |
+| **Supabase**  | Vocabulary database and data storage  |
+
+## Tech Stack
+
+| Technology     | Purpose                         |
+| -------------- | ------------------------------- |
+| **Python**     | Backend and data processing     |
+| **FastAPI**    | Backend / API framework         |
+| **Whisper**    | Speech-to-text                  |
+| **DeepL API**  | Translation                     |
+| **fugashi**    | Japanese NLP / tokenization     |
+| **Supabase**   | Database and vocabulary storage |
+| **HTML/CSS**   | User interface                  |
+| **JavaScript** | Frontend functionality          |
+| **Git/GitHub** | Version control                 |
+| **Render**     | Application deployment          |
+
+## Application
+
+### Home Page
+
+![Home Page](image.png)
+
+### Audio Analysis
+
+![Audio Analysis](image-2.png)
+
+### Vocabulary Analysis
+
+![Vocabulary Analysis](image-1.png)
+
+### Flashcards
+
+![Flashcard](image-3.png)
+![Flashcard](image-4.png)
+
+## Running Locally
+
+### Prerequisites
+
+* Python 3.10+
+* A Supabase project
+* A DeepL API key
+* A Groq API key
+
+### Setup
+
+1. Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/VoiceGo.git
+git clone https://github.com/lphuong25/VoiceGo.git
 cd VoiceGo
 ```
 
-### 2. Create a virtual environment
-
-Windows:
+2. Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
+```
+
+On Windows:
+
+```bash
 .venv\Scripts\activate
 ```
 
-macOS / Linux:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
+3. Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Create environment variables
+4. Create a `.env` file based on `.env.example`.
 
-Copy `.env.example` to `.env`:
+5. Add your API keys and Supabase configuration.
 
-```text
-SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
-GROQ_API_KEY=...
-DEEPL_API_KEY=...
-WHISPER_MODEL=whisper-large-v3-turbo
-```
-
-Do **not** commit `.env`.
-
-### 5. Configure Supabase
-
-Create a Supabase project and enable email/password authentication.
-
-Then open the Supabase SQL Editor and run:
-
-```text
-supabase/schema.sql
-```
-
-The table uses Row Level Security so a signed-in user can only read and insert their own saved results.
-
-### 6. Start VoiceGo
+6. Start the FastAPI application:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Open:
+7. Open the application in your browser.
 
-```text
-http://127.0.0.1:8000
+> **Note:** API keys and database credentials are not included in this repository. Create your own environment configuration using the example below.
+
+## Environment Variables
+
+Create a `.env` file example below and provide your own credentials.
+
+Example:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+DEEPL_API_KEY=your_deepl_api_key
+
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
 ```
 
-Health check:
+**Never commit** **`.env`** **or other files containing real credentials to GitHub.**
 
-```text
-http://127.0.0.1:8000/health
-```
+## Deployment
 
-## Free deployment
+The application is currently deployed using **Render** for demonstration purposes.
 
-### Recommended setup for a resume demo
+The deployed application connects to the Supabase database for vocabulary lookup and uses external APIs for speech-to-text and translation.
 
-Use:
+## Future Improvements
 
-- **Render Free** for the FastAPI web application
-- **Groq** for hosted Whisper transcription
-- **Supabase Free** for authentication and saved results
-- **DeepL API Free** for translation
+Possible future improvements include:
 
-This avoids paying for a GPU or trying to fit a Whisper model into a tiny free server.
+* Add log in function
+* Add learning history and user progress tracking
+* Add vocabulary difficulty and frequency analysis
+* Provide statistics about vocabulary found in uploaded audio
+* Add additional JLPT vocabulary levels
+* Improve Japanese vocabulary extraction and grammatical filtering
+* Add more detailed learning analytics
+* Allow users to save and review previously analyzed vocabulary
 
-Render's free web service has limited CPU/RAM and sleeps after inactivity, so the first request after a period of inactivity can be slow. That is acceptable for a portfolio demonstration.
+## Project Context
 
-Render deployment:
+VoiceGo was developed as a personal project to explore the use of **data processing, natural language processing, and AI APIs** in an educational application.
 
-1. Push this repository to GitHub.
-2. Create a new **Web Service** in Render.
-3. Connect the GitHub repository.
-4. Select the **Free** plan.
-5. Use:
-   - Build command: `pip install -r requirements.txt`
-   - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-6. Add the environment variables from `.env`.
-7. Deploy.
+The project provided hands-on experience with:
 
-`render.yaml` is included as a reference configuration.
-
-## API endpoints
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/` | Web application |
-| GET | `/health` | Deployment health check |
-| POST | `/uploads` | Transcribe and analyze Japanese audio |
-| GET | `/flashcard` | Vocabulary flashcards |
-| POST | `/save_user_data` | Save an analysis for the signed-in user |
-| GET | `/get_user_data/{user_id}` | Retrieve the user's saved analyses |
-
-## Design decisions
-
-### Hosted Whisper instead of local Whisper
-
-The original version loaded:
-
-```python
-whisper.load_model("base")
-```
-
-inside the web server. This made deployment difficult because the model and its runtime dependencies require substantially more resources than a small free web service provides.
-
-The updated project keeps the same user-facing feature while moving inference to a hosted Whisper endpoint.
-
-### Local vocabulary database instead of one API request per word
-
-The original version queried Supabase separately for every extracted word.
-
-The updated version uses the included `JLPTVocabulary.db` SQLite database. This:
-
-- removes many network requests
-- makes vocabulary extraction faster
-- reduces Supabase usage
-- makes the project easier to reproduce
-- keeps the vocabulary dataset available even if Supabase is temporarily unavailable
-
-Supabase is still used where it adds real value: authentication and user-specific saved data.
-
-### No permanent audio storage
-
-VoiceGo sends audio to the transcription service for processing and does not need to keep uploaded recordings on the server.
-
-This also avoids depending on the ephemeral filesystem of free hosting.
-
-## Limitations
-
-- Audio uploads are limited to 25 MB.
-- Free hosted services can have cold starts.
-- Groq and DeepL API usage is subject to their current free-tier limits.
-- JLPT vocabulary coverage depends on the bundled dataset.
-- JLPT levels are used as a learning aid; they should not be treated as an official proficiency assessment.
-- Japanese speech containing names, slang, dialects, or heavy background noise may produce transcription errors.
-
+* Python backend development
+* REST API development
+* Speech-to-text processing
+* Japanese natural language processing
+* Data cleaning and transformation
+* Database integration
+* API integration
+* Building a data-driven web application
+* Cloud deployment
 
 ## License
 
-MIT License. See `LICENSE` if included in the repository.
+This project was created for educational and portfolio purposes.
