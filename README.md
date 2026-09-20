@@ -5,7 +5,8 @@
 The project combines **speech-to-text, natural language processing, vocabulary analysis, and a web interface** to provide a simple Japanese learning workflow.
 
 **Access it here**: [VoiceGo](https://voicego-2fw7.onrender.com/)
-(The sample file used below is in this <audio controls src="https://archive.org/details/jlpt-stories/%2309+-+%E5%83%95%E3%81%AE%E5%A4%A7%E5%88%87%E3%81%AA%E5%AE%B6%E6%97%8F+%E2%80%93+JLPT+N4.mp3" title="link, number 6"></audio> )
+
+(The sample file used below is in [this link, file number 6] (https://archive.org/details/jlpt-stories/%2309+-+%E5%83%95%E3%81%AE%E5%A4%A7%E5%88%87%E3%81%AA%E5%AE%B6%E6%97%8F+%E2%80%93+JLPT+N4.mp3) )
 ## Features
 
 * Upload Japanese audio files for analysis
